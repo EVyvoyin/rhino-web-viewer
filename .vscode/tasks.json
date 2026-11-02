@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "准备构建依赖", "type": "npm", "script": "setup", "problemMatcher": [] },
+    { "label": "构建网页查看器", "type": "npm", "script": "build", "group": { "kind": "build", "isDefault": true }, "problemMatcher": [] },
+    { "label": "构建 Rhino 插件", "type": "npm", "script": "build:plugin", "dependsOn": "构建网页查看器", "problemMatcher": "$msCompile" },
+    { "label": "打开本地预览服务", "type": "npm", "script": "preview", "isBackground": true, "problemMatcher": [] },
+    { "label": "验证 GLB 文件检查", "type": "npm", "script": "test:glb", "problemMatcher": [] },
+    { "label": "生成发布安装包", "type": "npm", "script": "package", "dependsOn": "构建 Rhino 插件", "problemMatcher": [] }
+  ]
+}
