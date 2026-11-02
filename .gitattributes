@@ -1,0 +1,10 @@
+* text=auto
+*.cs text eol=crlf
+*.ps1 text eol=crlf
+*.mjs text eol=lf
+*.js text eol=lf
+*.html -text
+artifacts/*.html -diff -whitespace linguist-generated=true
+*.rhp binary
+*.rhi binary
+*.zip binary

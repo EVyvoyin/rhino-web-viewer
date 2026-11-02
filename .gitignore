@@ -1,0 +1,13 @@
+node_modules/
+downloads/
+dist/
+.build/
+plugin/build/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+qa/glb-validation-results.json

@@ -1,0 +1,8 @@
+{
+  "folders": [{ "path": "." }],
+  "settings": {
+    "files.encoding": "utf8",
+    "files.exclude": { "**/node_modules": true, "**/.build": true },
+    "search.exclude": { "**/artifacts": true, "**/dist": true, "**/downloads": true }
+  }
+}
