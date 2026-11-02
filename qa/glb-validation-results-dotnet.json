@@ -1,0 +1,116 @@
+{
+  "Runtime": ".NET 10.0.11",
+  "Count": 22,
+  "Results": [
+    {
+      "Name": "reachable_mesh",
+      "Passed": true,
+      "Accepted": true
+    },
+    {
+      "Name": "scene_zero_default",
+      "Passed": true,
+      "Accepted": true
+    },
+    {
+      "Name": "child_mesh",
+      "Passed": true,
+      "Accepted": true
+    },
+    {
+      "Name": "explicit_second_scene",
+      "Passed": true,
+      "Accepted": true
+    },
+    {
+      "Name": "empty_meshes",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "empty_primitives",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "empty_scene",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "unreachable_mesh",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "mesh_only_in_other_scene",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "no_position",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "zero_vertices",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "negative_vertices",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "wrong_position_shape",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "bad_accessor_index",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "bad_mesh_index",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "bad_node_index",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "bad_scene_index",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "cycle_without_geometry",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "malformed_json",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "mesh_text_in_name_is_not_geometry",
+      "Passed": true,
+      "Accepted": false
+    },
+    {
+      "Name": "real_demo_glb",
+      "Passed": true,
+      "Accepted": true
+    },
+    {
+      "Name": "invalid_glb_header",
+      "Passed": true,
+      "Accepted": false
+    }
+  ]
+}
