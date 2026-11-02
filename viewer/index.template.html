@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>模型预览</title>
+  <style>__RV_STYLES_CSS__</style>
+</head>
+<body>
+  <div id="app" class="app" data-theme="light">
+    <main id="viewport" class="viewport" aria-label="三维模型预览，可以拖动旋转和滚动缩放">
+      <canvas id="model-canvas" aria-label="三维模型画布"></canvas>
+      <div class="viewport-vignette" aria-hidden="true"></div>
+    </main>
+
+    <header class="topbar">
+      <div class="identity">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="m14 3 10 5.5v11L14 25 4 19.5v-11Z"/><path d="m4 8.5 10 5.7 10-5.7M14 14.2V25M9 5.75 19 11.4"/></svg></div>
+        <div class="identity-copy"><p class="eyebrow">RHINO · 模型预览</p><h1 id="model-title">模型预览</h1></div>
+      </div>
+      <div class="top-actions">
+        <span class="local-tag"><span></span>本地查看</span>
+        <button id="open-file" class="button secondary" type="button" title="打开本地 GLB 文件"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h6l2-3h5l2 3h3v12H3Z"/><path d="M12 10v6m-3-3h6"/></svg><span>打开模型</span></button>
+      </div>
+    </header>
+
+    <section id="empty-state" class="empty-state" aria-labelledby="empty-title">
+      <div class="empty-symbol" aria-hidden="true"><svg viewBox="0 0 72 72"><path d="m36 9 24 13.5v27L36 63 12 49.5v-27Z"/><path d="m12 22.5 24 14 24-14M36 36.5V63"/></svg><span class="empty-orbit"></span></div>
+      <p class="eyebrow">从任意角度，看见每个细节</p>
+      <h2 id="empty-title">让设计转起来</h2>
+      <p class="empty-description">拖入一个 GLB 模型，即可旋转、缩放和查看。<br>无需安装软件，模型始终留在你的设备上。</p>
+      <button id="empty-open" class="button primary" type="button">选择 GLB 模型 <span aria-hidden="true">↗</span></button>
+      <span class="format-note">支持 .glb · 无需联网</span>
+    </section>
+
+    <section id="loading-panel" class="loading-panel" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><strong id="loading-text">正在准备模型…</strong><span>首次打开大模型可能需要一点时间</span></section>
+
+    <section id="error-panel" class="error-panel" role="alert" hidden>
+      <div class="error-symbol" aria-hidden="true">!</div><div><h2 id="error-title">暂时无法显示模型</h2><p id="error-message"></p><button id="error-open" class="text-button" type="button">选择其他 GLB 文件 →</button></div><button id="dismiss-error" class="icon-button" type="button" title="关闭提示" aria-label="关闭提示">×</button>
+    </section>
+
+    <aside id="view-controls" class="view-controls" aria-label="模型视角" hidden>
+      <span class="control-label">视角</span>
+      <button class="view-button active" data-view="perspective" type="button" aria-pressed="true">立体</button>
+      <button class="view-button" data-view="front" type="button" aria-pressed="false">正面</button>
+      <button class="view-button" data-view="side" type="button" aria-pressed="false">侧面</button>
+      <button class="view-button" data-view="top" type="button" aria-pressed="false">顶部</button>
+    </aside>
+
+    <div id="bottom-area" class="bottom-area">
+      <div id="model-meta" class="model-meta" hidden><span class="model-dot"></span><span id="model-file-name"></span><span class="meta-separator">·</span><span id="model-size"></span></div>
+      <nav id="toolbar" class="toolbar" aria-label="预览工具" hidden>
+        <button id="auto-rotate" class="tool-button" type="button" aria-pressed="false" title="自动旋转"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 19.7 11M4.3 13A8 8 0 0 0 17.9 17.9"/></svg><span>自动旋转</span></button>
+        <button id="reset-view" class="tool-button" type="button" title="恢复初始视角"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3l9 7M5 9v11h14V9M9 20v-7h6v7"/></svg><span>复位</span></button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="toggle-theme" class="tool-button" type="button" aria-pressed="false" title="切换到深色背景"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/></svg><span>背景</span></button>
+        <button id="take-snapshot" class="tool-button" type="button" title="保存当前视角为 PNG 图片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h5l2-3h4l2 3h5v13H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>截图</span></button>
+        <button id="fullscreen" class="tool-button" type="button" aria-pressed="false" title="全屏查看"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span>全屏</span></button>
+      </nav>
+      <div class="interaction-hint"><span class="desktop-hint">拖动旋转<span>·</span>滚轮缩放<span>·</span>右键平移</span><span class="touch-hint">单指旋转<span>·</span>双指缩放与平移</span></div>
+    </div>
+
+    <div id="drop-overlay" class="drop-overlay" hidden><div class="drop-box"><span aria-hidden="true">↓</span><strong>松开，即刻预览</strong><p>支持 GLB 三维模型</p></div></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <input id="file-input" type="file" accept=".glb,model/gltf-binary" hidden>
+    <noscript><div class="noscript-message">此模型预览需要 JavaScript。请在浏览器中启用 JavaScript 后重新打开。</div></noscript>
+  </div>
+  <script id="rv-config" type="application/json">__RV_CONFIG_JSON__</script>
+  <script>__RV_BUNDLE_JS__</script>
+</body>
+</html>
