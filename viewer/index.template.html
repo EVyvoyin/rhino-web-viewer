@@ -7,8 +7,22 @@
   <meta name="referrer" content="no-referrer">
   <title>模型预览</title>
   <style>__RV_STYLES_CSS__</style>
+  <!-- RV_TEMPLATE_HELP_START -->
+  <style>
+    :root{color-scheme:light}body{margin:0;background:#eef1ec;color:#27362e;font:16px/1.8 "Segoe UI","Microsoft YaHei",sans-serif}#app{display:none!important}.template-help{box-sizing:border-box;max-width:680px;margin:12vh auto;padding:36px;background:#fff;border:1px solid #dce3d9;border-radius:18px}.template-help h1{font-size:25px;margin:0 0 18px}.template-help p{margin:12px 0}.template-help a{display:inline-block;margin-top:12px;padding:11px 20px;background:#334e3e;color:#fff;border-radius:9px;text-decoration:none}.template-help code{font-size:14px;overflow-wrap:anywhere}@media(max-width:720px){.template-help{margin:30px 16px;padding:24px}}
+  </style>
+  <!-- RV_TEMPLATE_HELP_END -->
 </head>
 <body>
+  <!-- RV_TEMPLATE_HELP_START -->
+  <section class="template-help">
+    <h1>这是开发模板，请打开完整的模型查看器</h1>
+    <p><code>index.template.html</code> 用来生成成品网页，其中的程序和样式尚未打包，不能直接预览模型。</p>
+    <p>请在文件资源管理器中双击交付文件夹里的“打开模型查看器.cmd”，它会使用 Chrome 或 Edge 打开完整网页。</p>
+    <p>如果当前已在 Chrome 或 Edge 中，也可以点击下面的按钮。打开自己的 GLB 后，点击“保存模型网页”生成可发送的 HTML。</p>
+    <a href="../artifacts/viewer.html">打开完整的模型查看器 →</a>
+  </section>
+  <!-- RV_TEMPLATE_HELP_END -->
   <div id="app" class="app" data-theme="light">
     <main id="viewport" class="viewport" aria-label="三维模型预览，可以拖动旋转和滚动缩放">
       <canvas id="model-canvas" aria-label="三维模型画布"></canvas>
@@ -23,6 +37,7 @@
       <div class="top-actions">
         <span class="local-tag"><span></span>本地查看</span>
         <button id="open-file" class="button secondary" type="button" title="打开本地 GLB 文件"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h6l2-3h5l2 3h3v12H3Z"/><path d="M12 10v6m-3-3h6"/></svg><span>打开模型</span></button>
+        <button id="save-page" class="button save-model" type="button" title="将当前模型保存为可发送的独立 HTML 网页（Ctrl+S）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg><span>保存模型网页</span></button>
       </div>
     </header>
 
@@ -68,6 +83,6 @@
     <noscript><div class="noscript-message">此模型预览需要 JavaScript。请在浏览器中启用 JavaScript 后重新打开。</div></noscript>
   </div>
   <script id="rv-config" type="application/json">__RV_CONFIG_JSON__</script>
-  <script>__RV_BUNDLE_JS__</script>
+  <script type="text/x-rhino-bundle-template">__RV_BUNDLE_JS__</script>
 </body>
 </html>

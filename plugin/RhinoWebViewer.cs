@@ -22,8 +22,8 @@ using Rhino.PlugIns;
 [assembly: AssemblyDescription("Export Rhino models as self-contained interactive HTML files.")]
 [assembly: AssemblyCompany("Rhino Web Viewer")]
 [assembly: AssemblyProduct("Rhino Web Viewer")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyFileVersion("1.0.3.0")]
 [assembly: ComVisible(false)]
 [assembly: Guid("c0d86dc0-77e4-4c28-bc92-6b75e7898d53")]
 

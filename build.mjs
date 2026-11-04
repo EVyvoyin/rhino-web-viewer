@@ -23,7 +23,9 @@ const result=await build({absWorkingDir:root,entryPoints:['./viewer/viewer.js'],
 const script=result.outputFiles[0].text.replaceAll('</script','<\\/script');
 const [template,styles]=await Promise.all([fs.readFile(path.join(root,'viewer','index.template.html'),'utf8'),fs.readFile(path.join(root,'viewer','style.css'),'utf8')]);
 const license=await fs.readFile(path.join(root,'node_modules','three','LICENSE'),'utf8');
-const html=template.replace('__RV_BUNDLE_JS__',()=>script).replace('__RV_STYLES_CSS__',()=>styles)
+const cleanTemplate=template.replace(/\s*<!-- RV_TEMPLATE_HELP_START -->[\s\S]*?<!-- RV_TEMPLATE_HELP_END -->/g,'')
+  .replace(' type="text/x-rhino-bundle-template"','');
+const html=cleanTemplate.replace('__RV_BUNDLE_JS__',()=>script).replace('__RV_STYLES_CSS__',()=>styles)
   .replace('</head>',()=>`<!-- Bundled three.js license\n${license.replaceAll('--','—')}\n-->\n</head>`);
 if(html.split('__RV_CONFIG_JSON__').length!==2)throw new Error('Template must have exactly one config placeholder');
 if(html.includes('__RV_BUNDLE_JS__')||html.includes('__RV_STYLES_CSS__'))throw new Error('Unresolved bundle placeholders');

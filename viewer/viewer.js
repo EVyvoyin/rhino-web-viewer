@@ -2,17 +2,28 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createPageShell, createModelPageBlob, writeModelPage, modelSourceSize,
+  modelPageFileName, decodeModelChunk, MODEL_ENCODING } from './save-page.js';
 
 // This bundle is embedded in the exported HTML. It never requests a remote asset.
 const $ = (id) => document.getElementById(id);
 const app = $('app');
+// Detach data before copying the shell: cloning a 200 MB model-bearing DOM can exhaust memory.
+const embeddedConfigNode = $('rv-config');
+const emptyConfigNode = embeddedConfigNode.cloneNode(false);
+emptyConfigNode.textContent = '{}';
+embeddedConfigNode.replaceWith(emptyConfigNode);
+const embeddedModelChunks = [...document.querySelectorAll('script[data-rv-model-chunk]')];
+for (const node of embeddedModelChunks) node.remove();
+const pageTemplate = document.documentElement.cloneNode(true);
 const state = {
-  ready: false, modelLoaded: false, loading: false, error: null, title: '',
+  ready: false, modelLoaded: false, loading: false, saving: false, error: null, title: '',
   fileName: '', fileSize: 0, modelBounds: null, triangleCount: 0,
   theme: 'light', autoRotate: false, currentView: 'perspective', webglAvailable: false,
 };
 let scene, renderer, camera, controls, modelRoot, ground, keyLight, environmentTarget;
 let currentModel = null, loadSequence = 0, toastTimer, transition = null;
+let currentModelSource = null;
 let fitDistance = 12, previousFrame = 0, disposed = false, resizeObserver;
 const targetOrigin = new THREE.Vector3();
 const displaySize = 6.4;
@@ -41,7 +52,8 @@ function setLoading(loading) {
   state.loading = loading;
   $('loading-panel').hidden = !loading;
   $('empty-state').hidden = loading || state.modelLoaded;
-  $('open-file').disabled = loading;
+  $('open-file').disabled = loading || state.saving;
+  $('save-page').disabled = loading || state.saving || !currentModelSource;
 }
 function sizeLabel(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -197,7 +209,9 @@ function userError(error) {
 }
 
 async function loadArrayBuffer(buffer, options = {}) {
+  if (state.saving) { notify('正在保存模型网页，请稍后再打开其他模型。'); return false; }
   if (!state.webglAvailable || !renderer) {
+    setLoading(false);
     showError('浏览器无法启用三维图形。请使用较新的 Chrome、Edge 或 Safari，并开启硬件加速。');
     return false;
   }
@@ -289,6 +303,9 @@ async function loadArrayBuffer(buffer, options = {}) {
     resetView(false);
     // GLTF animation tracks are deliberately left at their authored initial pose.
     renderer.render(scene, camera);
+    // Replace the downloadable model only after the new model has loaded successfully.
+    // A local File can be read in small slices when saving, without retaining another full buffer.
+    currentModelSource = options.sourceFile instanceof Blob ? options.sourceFile : buffer;
     window.dispatchEvent(new CustomEvent('rhino-viewer-loaded', { detail: { ...state } }));
     return true;
   } catch (error) {
@@ -306,13 +323,25 @@ async function loadArrayBuffer(buffer, options = {}) {
 
 async function loadFile(file) {
   if (!file) return false;
+  if (state.saving) { notify('正在保存模型网页，请稍后再打开其他模型。'); return false; }
   if (!/\.glb$/i.test(file.name)) {
     showError('请选择 .glb 格式的模型。Rhino 的 .3dm 文件需要先通过导出插件转换。', '文件格式不支持');
     return false;
   }
+  // Disable saving as soon as reading starts, so a large new file cannot save the old model.
+  const readSequence = ++loadSequence;
+  setLoading(true);
+  setStatus('正在读取模型文件…');
   try {
-    return await loadArrayBuffer(await file.arrayBuffer(), { fileName: file.name, title: fileTitle(file.name) });
-  } catch (error) { showError(`无法读取这个文件。${userError(error)}`); return false; }
+    const buffer = await file.arrayBuffer();
+    if (readSequence !== loadSequence) return false;
+    const loaded = await loadArrayBuffer(buffer, { fileName: file.name, title: fileTitle(file.name), sourceFile: file });
+    if (loaded) notify('模型已打开。点击“保存模型网页”，生成可发送的 HTML 文件。');
+    return loaded;
+  } catch (error) {
+    if (readSequence === loadSequence) { setLoading(false); showError(`无法读取这个文件。${userError(error)}`); }
+    return false;
+  }
 }
 
 function decodeBase64(value) {
@@ -354,7 +383,8 @@ function resize() {
 function animate(now) {
   if (disposed) return;
   requestAnimationFrame(animate);
-  if (document.hidden || !renderer || !controls) return;
+  // Keep the last frame while reading/saving; huge scenes must not starve chunk I/O every frame.
+  if (document.hidden || state.saving || state.loading || !renderer || !controls) return;
   const delta = previousFrame ? Math.min((now - previousFrame) / 1000, .05) : 1 / 60;
   previousFrame = now;
   if (transition) {
@@ -466,6 +496,61 @@ function snapshot() {
   } catch (error) { notify('此浏览器无法保存截图，可使用设备自带的截屏功能。'); return false; }
 }
 
+async function saveModelPage() {
+  if (state.loading || state.saving) return false;
+  if (!currentModelSource) { notify('请先打开一个模型，再保存模型网页。'); return false; }
+  state.saving = true;
+  $('open-file').disabled = true;
+  const button = $('save-page');
+  button.disabled = true;
+  button.querySelector('span').textContent = '正在保存…';
+  // Capture a consistent model/name pair even if another model starts loading meanwhile.
+  const source = currentModelSource;
+  const metadata = { title: state.title, fileName: state.fileName };
+  let url, link;
+  try {
+    let handle;
+    // Request the destination before any asynchronous conversion, while user activation is valid.
+    if (typeof window.showSaveFilePicker === 'function') {
+      button.querySelector('span').textContent = '选择保存位置…';
+      try {
+        handle = await window.showSaveFilePicker({ suggestedName: modelPageFileName(metadata.title),
+          types: [{ description: '模型网页', accept: { 'text/html': ['.html'] } }] });
+      } catch (error) {
+        if (error.name === 'AbortError') { notify('已取消保存'); return false; }
+        if (!['SecurityError', 'NotSupportedError'].includes(error.name)) throw error;
+      }
+    }
+    const shell = createPageShell(pageTemplate, metadata, modelSourceSize(source));
+    const progress = (done, total) => { button.querySelector('span').textContent = `正在保存 ${Math.floor(done / total * 100)}%`; };
+    if (handle) {
+      await writeModelPage(await handle.createWritable(), shell, source, progress);
+      notify(`模型网页已保存：${handle.name}。可将这个 HTML 文件发送给顾客。`);
+    } else {
+      const blob = await createModelPageBlob(shell, source, progress);
+      url = URL.createObjectURL(blob);
+      link = document.createElement('a');
+      link.href = url;
+      link.download = modelPageFileName(metadata.title);
+      document.body.appendChild(link);
+      link.click();
+      notify('已生成当前模型的网页。请将新下载的 HTML 文件发送给顾客。');
+    }
+    return true;
+  } catch (error) {
+    console.error('[RhinoWebViewer] Save page:', error);
+    notify('模型网页保存失败，请重试；大模型可先降低网格精度。');
+    return false;
+  } finally {
+    link?.remove();
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 60000);
+    state.saving = false;
+    $('open-file').disabled = state.loading;
+    button.querySelector('span').textContent = '保存模型网页';
+    button.disabled = state.loading || !currentModelSource;
+  }
+}
+
 async function toggleFullscreen() {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
@@ -485,6 +570,7 @@ $('reset-view').addEventListener('click', () => resetView());
 $('auto-rotate').addEventListener('click', () => setAutoRotate(!state.autoRotate));
 $('toggle-theme').addEventListener('click', () => setTheme(state.theme === 'light' ? 'dark' : 'light'));
 $('take-snapshot').addEventListener('click', snapshot);
+$('save-page').addEventListener('click', saveModelPage);
 $('fullscreen').addEventListener('click', toggleFullscreen);
 if (!app.requestFullscreen) { $('fullscreen').classList.add('unsupported'); $('fullscreen').title = '此浏览器不支持全屏按钮'; }
 document.addEventListener('fullscreenchange', () => {
@@ -510,6 +596,11 @@ window.addEventListener('drop', async (event) => {
   await loadFile(files[0]);
 });
 window.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    saveModelPage();
+    return;
+  }
   if (event.altKey || event.ctrlKey || event.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
   if (event.key.toLowerCase() === 'r') resetView();
   if (event.key === 'Escape') { $('drop-overlay').hidden = true; dragDepth = 0; }
@@ -519,26 +610,61 @@ window.RhinoWebViewer = {
   state,
   get modelLoaded() { return state.modelLoaded; },
   get modelBounds() { return state.modelBounds; },
-  resetView, setView, setTheme, setAutoRotate, loadFile, loadArrayBuffer, snapshot,
+  resetView, setView, setTheme, setAutoRotate, loadFile, loadArrayBuffer, snapshot, saveModelPage,
   getCamera() { return camera ? { position: camera.position.toArray(), target: controls.target.toArray(), aspect: camera.aspect, fitDistance } : null; },
   getRenderInfo() { return renderer ? { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures } : null; },
 };
 
+function clearEmbeddedChunks() {
+  for (const node of embeddedModelChunks) if (node) node.textContent = '';
+  embeddedModelChunks.length = 0;
+}
+
 (async () => {
   let config;
-  try { config = JSON.parse($('rv-config').textContent || '{}'); }
+  try { config = JSON.parse(embeddedConfigNode.textContent || '{}'); }
   catch { config = {}; showError('页面配置信息损坏，仍可通过“打开模型”选择 GLB 文件。'); }
+  embeddedConfigNode.textContent = '';
   setTitle(config.title || fileTitle(config.fileName));
-  if (!initializeScene()) return;
-  if (config.modelBase64) {
+  if (!initializeScene()) { clearEmbeddedChunks(); config.modelBase64 = ''; return; }
+  if (config.modelBase64 || config.modelEncoding === MODEL_ENCODING) {
+    const embeddedSequence = ++loadSequence;
     setLoading(true);
     setStatus('正在读取内嵌模型…');
     await new Promise((resolve) => setTimeout(resolve, 0));
     try {
-      const buffer = decodeBase64(config.modelBase64);
+      if (embeddedSequence !== loadSequence) return;
+      let buffer;
+      if (config.modelEncoding === MODEL_ENCODING) {
+        if (!Number.isSafeInteger(config.modelByteLength) || config.modelByteLength <= 0 || !embeddedModelChunks.length) {
+          throw new Error('网页中的模型数据不完整，请重新保存。');
+        }
+        const bytes = new Uint8Array(config.modelByteLength);
+        let offset = 0;
+        for (let i = 0; i < embeddedModelChunks.length; i++) {
+          const node = embeddedModelChunks[i];
+          let text = node.textContent;
+          node.textContent = '';
+          embeddedModelChunks[i] = null;
+          offset = decodeModelChunk(text, bytes, offset);
+          text = null;
+          setStatus(`正在读取内嵌模型 ${Math.floor(offset / bytes.length * 100)}%…`);
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          if (embeddedSequence !== loadSequence) return;
+        }
+        if (offset !== bytes.length) throw new Error('网页中的模型长度不正确，请重新保存。');
+        buffer = bytes.buffer;
+      } else {
+        buffer = decodeBase64(config.modelBase64);
+      }
       config.modelBase64 = '';
-      $('rv-config').textContent = '{}';
       await loadArrayBuffer(buffer, { title: config.title, fileName: config.fileName || `${config.title || '模型'}.glb` });
-    } catch (error) { setLoading(false); showError(userError(error)); }
-  }
+    } catch (error) {
+      if (embeddedSequence === loadSequence) { setLoading(false); showError(userError(error)); }
+    }
+    finally {
+      clearEmbeddedChunks();
+      config.modelBase64 = '';
+    }
+  } else clearEmbeddedChunks();
 })();
